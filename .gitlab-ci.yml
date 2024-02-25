@@ -1,0 +1,36 @@
+stages:
+  - akto_test
+  - poll_results
+  - check_failures
+
+variables:
+  AKTO_POLL_URL: ""
+  AKTO_TEST_URL: ””
+  AKTO_API_KEY: ""
+  AKTO_TEST_ID: ""
+
+akto_test:
+  stage: akto_test
+  script:
+    - curl -X POST -d "apiKey=$AKTO_API_KEY&testId=$AKTO_TEST_ID" $AKTO_TEST_URL
+  when: manual
+  allow_failure: false
+
+poll_results:
+  stage: poll_results
+  script:
+    - curl -X GET -d "apiKey=$AKTO_API_KEY&testId=$AKTO_TEST_ID" $AKTO_POLL_URL
+  allow_failure: true
+
+check_failures:
+  stage: check_failures
+  script:
+    - response_code=$(curl -s -o /dev/null -w "%{http_code}" -X GET -d "apiKey=$AKTO_API_KEY&testId=$AKTO_TEST_ID" $AKTO_POLL_URL)
+    - echo "API response code: $response_code"
+    - |
+      if [[ $response_code -ne 200 ]]; then
+        echo "Test failed. Failing pipeline..."
+        exit 1
+      fi
+  when: always
+  allow_failure: true
